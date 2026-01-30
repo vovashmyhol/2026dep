@@ -97,8 +97,6 @@
             position: relative;
             transform-style: preserve-3d;
             transform: rotateX(var(--rot-x, -25deg)) rotateY(var(--rot-y, 45deg));
-
-            /* Enhanced Elastic Physics */
             transition: transform 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
@@ -106,6 +104,7 @@
             transition: none;
         }
 
+        /* Opening Animation */
         .cube.opening .face.top {
             transform: rotateX(120deg) translateZ(100px) translateY(-150px);
             opacity: 0;
@@ -125,7 +124,6 @@
             height: 202px;
             left: -1px;
             top: -1px;
-            /* Overlap to hide gaps */
             background: rgba(20, 30, 60, 0.9);
             border: 2px solid rgba(130, 200, 255, 0.6);
             box-shadow: inset 0 0 50px rgba(0, 50, 255, 0.4);
@@ -290,7 +288,6 @@
 
     <div class="scene idle" id="scene">
         <div class="cube" id="cube">
-            <!-- Question Marks on 4 Sides -->
             <div class="face front">
                 <div class="question-mark">?</div>
             </div>
@@ -316,19 +313,16 @@
     <div id="splashOverlay"></div>
 
     <div id="revealModal">
-        <!-- Lottie Bear -->
         <lottie-player
             src="https://raw.githubusercontent.com/vovashmyhol/2026dep/refs/heads/main/%D0%BC%D0%B8%D1%88%D0%BA%D0%B0.json"
             background="transparent" speed="1" loop autoplay>
         </lottie-player>
-
         <h1 style="color:white; margin:10px 0; font-size: 36px; text-shadow: 0 0 20px #00f3ff; font-weight: 900;">TEDDY
             BEAR</h1>
         <button class="claim-btn" onclick="Telegram.WebApp.close()">CLAIM & EXIT</button>
     </div>
 
     <script>
-        // --- INIT ---
         const tg = window.Telegram?.WebApp;
         if (tg) {
             tg.ready();
@@ -358,20 +352,25 @@
         const hint = document.getElementById('hint');
 
         let isDragging = false;
-        let isPaying = false; // Lock interactions during payment
+        let isPaying = false; // Prevents double click
         let startX, startY, dragDist = 0;
         let rotX = -25, rotY = 45;
         let isOpen = false;
 
+        // Use ONLY pointer for unified handling if supported, else mouse/touch
+        // But to fix "double fire" (mouseup + touchend), we just need a flag.
         scene.addEventListener('mousedown', startDrag);
         scene.addEventListener('touchstart', startDrag, { passive: false });
         document.addEventListener('mousemove', drag);
         document.addEventListener('touchmove', drag, { passive: false });
         document.addEventListener('mouseup', endDrag);
-        document.addEventListener('touchend', endDrag);
+        document.addEventListener('touchend', endDrag); // Double check logic here
 
         function startDrag(e) {
             if (isOpen || isPaying) return;
+            // Prevent multi-touch interference
+            if (e.touches && e.touches.length > 1) return;
+
             isDragging = true;
             dragDist = 0;
             const px = e.touches ? e.touches[0].clientX : e.clientX;
@@ -382,13 +381,13 @@
             scene.classList.remove('idle');
             hint.style.opacity = '0';
 
-            // Light Haptic
+            // Light Haptic on Touch
             if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         }
 
         function drag(e) {
             if (!isDragging || isOpen || isPaying) return;
-            e.preventDefault();
+            e.preventDefault(); // Stop scroll
             const px = e.touches ? e.touches[0].clientX : e.clientX;
             const py = e.touches ? e.touches[0].clientY : e.clientY;
             const dx = px - startX;
@@ -401,13 +400,16 @@
 
         function endDrag(e) {
             if (!isDragging) return;
+            // Short delay to ignore ghost clicks? No, just flag.
+
             isDragging = false;
             cube.classList.remove('dragging');
 
+            // If dragged less than 10px, treat as CLICK
             if (dragDist < 10 && !isOpen && !isPaying) {
-                // Clicked
+                // DEBOUNCE: Call payment
                 checkPaymentAndOpen();
-            } else {
+            } else if (!isOpen) {
                 // Snap Back
                 cube.style.setProperty('--rot-x', '-25deg');
                 cube.style.setProperty('--rot-y', '45deg');
@@ -417,70 +419,83 @@
 
         // --- PAYMENT LOGIC ---
         function checkPaymentAndOpen() {
-            // Slug extracted from user link: https://t.me/$QYGD-2BXyEmoFAAAsczOIEMbHFo
-            const invoiceSlug = "$QYGD-2BXyEmoFAAAsczOIEMbHFo";
-            const invoiceUrl = "https://t.me/" + invoiceSlug;
-
+            if (isPaying) return; // STRICT LOCK
             isPaying = true;
-            hint.innerText = "CONNECTING...";
+
+            const invoiceSlug = "$QYGD-2BXyEmoFAAAsczOIEMbHFo";
+
+            hint.innerText = "WAITING FOR PAYMENT...";
             hint.style.opacity = 1;
 
             if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
 
             if (tg) {
-                // Try Native Invoice Method
+                // Use openInvoice
                 try {
                     tg.openInvoice(invoiceSlug, (status) => {
-                        isPaying = false;
+                        // Callback called when invoice closes (paid, cancelled, failed)
                         if (status === "paid") {
-                            // SUCCESS
-                            if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-                            hint.innerText = "PAID! OPENING...";
-                            setTimeout(openBox, 500);
+                            hint.innerText = "SUCCESS! OPENING...";
+                            // VIBRATION SEQUENCE
+                            vibrateSuccess();
+                            setTimeout(openBox, 800); // 0.8s delay to enjoy "Paid" text
                         } else if (status === "cancelled") {
                             hint.innerText = "CANCELLED";
+                            isPaying = false; // Unlock
                             resetHint();
                         } else if (status === "failed") {
-                            // Fallback to Deep Link if native fails
-                            hint.innerText = "RETRYING...";
-                            tg.openTelegramLink(invoiceUrl);
+                            hint.innerText = "FAILED";
+                            isPaying = false; // Unlock
                             resetHint();
                         } else {
-                            // Pending or unknown
                             hint.innerText = "STATUS: " + status;
+                            // Some statuses like 'pending' keeps lock? 
+                            // Better unlock to let user try again.
+                            isPaying = false;
                             resetHint();
                         }
                     });
                 } catch (err) {
-                    // Fallback if method errors
-                    console.error(err);
-                    tg.openTelegramLink(invoiceUrl);
+                    // Fallback
+                    console.error("Invoice Error", err);
+                    hint.innerText = "ERROR - OPENING LINK";
+                    tg.openTelegramLink("https://t.me/" + invoiceSlug);
                     isPaying = false;
                     resetHint();
                 }
             } else {
-                // Browser Fallback (Testing only)
-                window.open(invoiceUrl, "_blank");
-                hint.innerText = "OPENED IN NEW TAB";
+                // Browser Test
                 isPaying = false;
-                // Note: Can't verify payment in browser without backend
+                window.open("https://t.me/" + invoiceSlug, "_blank");
+                hint.innerText = "TEST MODE: OPENING...";
+                // setTimeout(openBox, 2000); // Uncomment for auto-test
                 resetHint();
             }
         }
 
         function resetHint() {
             setTimeout(() => {
-                hint.innerText = "TAP TO PAY & OPEN";
+                if (!isPaying) hint.innerText = "TAP TO PAY & OPEN";
             }, 3000);
+        }
+
+        function vibrateSuccess() {
+            if (!tg?.HapticFeedback) return;
+            // A pattern of vibrations
+            tg.HapticFeedback.notificationOccurred('success'); // Initial Success Tick
+            setTimeout(() => tg.HapticFeedback.impactOccurred('rigid'), 200);
+            setTimeout(() => tg.HapticFeedback.impactOccurred('heavy'), 400);
+            setTimeout(() => tg.HapticFeedback.impactOccurred('heavy'), 600);
         }
 
         function openBox() {
             if (isOpen) return;
             isOpen = true;
-            cube.classList.add('shaking');
 
-            // Heavy Haptic for Opening
+            // Final heavy impact on "Pop"
             if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
+
+            cube.classList.add('shaking');
 
             setTimeout(() => {
                 cube.classList.remove('shaking');
