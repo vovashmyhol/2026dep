@@ -6,11 +6,8 @@
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Mystery Box</title>
-    <!-- Telegram Web App -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Lottie Player -->
     <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
-
     <style>
         :root {
             --neon-blue: #00f3ff;
@@ -276,9 +273,7 @@
 </head>
 
 <body>
-
     <div class="stars" id="stars"></div>
-
     <div class="scene idle" id="scene">
         <div class="cube" id="cube">
             <div class="face front">
@@ -296,197 +291,125 @@
             <div class="face top"></div>
             <div class="face bottom"></div>
         </div>
-
         <p id="hint"
-            style="position: absolute; bottom: -80px; width: 100%; text-align: center; color: rgba(255,255,255,0.6); font-size: 14px; letter-spacing: 2px; font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.5); pointer-events: none; transition: opacity 0.3s; z-index: 100;">
-            TAP TO PAY & OPEN
-        </p>
+            style="position: absolute; bottom: -90px; width: 100%; text-align: center; color: rgba(255,255,255,0.9); font-size: 14px; letter-spacing: 2px; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.8); pointer-events: none; transition: opacity 0.3s; z-index: 100;">
+            TAP TO PAY & OPEN</p>
     </div>
-
     <div id="splashOverlay"></div>
-
     <div id="revealModal">
         <lottie-player
             src="https://raw.githubusercontent.com/vovashmyhol/2026dep/refs/heads/main/%D0%BC%D0%B8%D1%88%D0%BA%D0%B0.json"
-            background="transparent" speed="1" loop autoplay>
-        </lottie-player>
+            background="transparent" speed="1" loop autoplay></lottie-player>
         <h1 style="color:white; margin:10px 0; font-size: 36px; text-shadow: 0 0 20px #00f3ff; font-weight: 900;">TEDDY
             BEAR</h1>
         <button class="claim-btn" onclick="Telegram.WebApp.close()">CLAIM & EXIT</button>
     </div>
-
     <script>
         const tg = window.Telegram?.WebApp;
-        if (tg) {
-            tg.ready();
-            tg.expand();
-            tg.setHeaderColor('#0f1c3f');
-            tg.setBackgroundColor('#0f1c3f');
-            tg.enableClosingConfirmation();
-        }
-
-        // --- STARS GEN ---
+        if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#0f1c3f'); tg.setBackgroundColor('#0f1c3f'); tg.enableClosingConfirmation(); }
         const starContainer = document.getElementById('stars');
-        for (let i = 0; i < 80; i++) {
-            const s = document.createElement('div');
-            s.className = 'star';
-            const size = Math.random() * 3 + 1;
-            s.style.width = size + 'px';
-            s.style.height = size + 'px';
-            s.style.left = Math.random() * 100 + 'vw';
-            s.style.top = Math.random() * 100 + 'vh';
-            s.style.setProperty('--dur', (Math.random() * 3 + 2) + 's');
-            starContainer.appendChild(s);
-        }
+        for (let i = 0; i < 80; i++) { const s = document.createElement('div'); s.className = 'star'; const sz = Math.random() * 3 + 1; s.style.width = sz + 'px'; s.style.height = sz + 'px'; s.style.left = Math.random() * 100 + 'vw'; s.style.top = Math.random() * 100 + 'vh'; s.style.setProperty('--dur', (Math.random() * 3 + 2) + 's'); starContainer.appendChild(s); }
 
-        // --- CUBE LOGIC ---
-        const scene = document.getElementById('scene');
-        const cube = document.getElementById('cube');
-        const hint = document.getElementById('hint');
+        const scene = document.getElementById('scene'), cube = document.getElementById('cube'), hint = document.getElementById('hint');
+        let isDragging = false, isPaying = false, useFallback = false, isTouchDetected = false, lastPayTime = 0;
+        let startX, startY, dragDist = 0, rotX = -25, rotY = 45, isOpen = false;
 
-        let isDragging = false;
-        let isPaying = false; // Lock
-        let isTouchDetected = false;
-        let lastPayTime = 0;
-
-        let startX, startY, dragDist = 0;
-        let rotX = -25, rotY = 45;
-        let isOpen = false;
-
-        scene.addEventListener('mousedown', startDrag);
-        scene.addEventListener('touchstart', startDrag, { passive: false });
-        document.addEventListener('mousemove', drag);
-        document.addEventListener('touchmove', drag, { passive: false });
-        document.addEventListener('mouseup', endDrag);
-        document.addEventListener('touchend', endDrag);
+        scene.addEventListener('mousedown', startDrag); scene.addEventListener('touchstart', startDrag, { passive: false });
+        document.addEventListener('mousemove', drag); document.addEventListener('touchmove', drag, { passive: false });
+        document.addEventListener('mouseup', endDrag); document.addEventListener('touchend', endDrag);
 
         function startDrag(e) {
             if (e.type === 'touchstart') isTouchDetected = true;
             if (e.type === 'mousedown' && isTouchDetected) return;
-
             if (isOpen || isPaying) return;
             if (e.touches && e.touches.length > 1) return;
-
-            isDragging = true;
-            dragDist = 0;
-            const px = e.touches ? e.touches[0].clientX : e.clientX;
-            const py = e.touches ? e.touches[0].clientY : e.clientY;
+            isDragging = true; dragDist = 0;
+            const px = e.touches ? e.touches[0].clientX : e.clientX; const py = e.touches ? e.touches[0].clientY : e.clientY;
             startX = px; startY = py;
-
-            cube.classList.add('dragging');
-            scene.classList.remove('idle');
-            hint.style.opacity = '0';
-
+            cube.classList.add('dragging'); scene.classList.remove('idle'); hint.style.opacity = '0';
             if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
         }
-
         function drag(e) {
-            if (!isDragging || isOpen || isPaying) return;
-            e.preventDefault();
-            const px = e.touches ? e.touches[0].clientX : e.clientX;
-            const py = e.touches ? e.touches[0].clientY : e.clientY;
-            const dx = px - startX;
-            const dy = py - startY;
-            dragDist += Math.abs(dx) + Math.abs(dy);
-
-            cube.style.setProperty('--rot-y', (rotY + dx * 0.4) + 'deg');
-            cube.style.setProperty('--rot-x', (rotX - dy * 0.4) + 'deg');
+            if (!isDragging || isOpen || isPaying) return; e.preventDefault();
+            const px = e.touches ? e.touches[0].clientX : e.clientX; const py = e.touches ? e.touches[0].clientY : e.clientY;
+            dragDist += Math.abs(px - startX) + Math.abs(py - startY);
+            cube.style.setProperty('--rot-y', (rotY + (px - startX) * 0.4) + 'deg'); cube.style.setProperty('--rot-x', (rotX - (py - startY) * 0.4) + 'deg');
         }
-
         function endDrag(e) {
             if (e.type === 'touchend') isTouchDetected = true;
             if (e.type === 'mouseup' && isTouchDetected) return;
-
-            if (!isDragging) return;
-            isDragging = false;
-            cube.classList.remove('dragging');
-
+            if (!isDragging) return; isDragging = false; cube.classList.remove('dragging');
             const now = Date.now();
             if (dragDist < 10 && !isOpen && !isPaying) {
-                // Debounce 2s
-                if (now - lastPayTime > 2000) {
-                    lastPayTime = now;
-                    checkPaymentAndOpen();
-                }
+                if (now - lastPayTime > 1500) { lastPayTime = now; checkPaymentAndOpen(); }
             } else if (!isOpen) {
-                cube.style.setProperty('--rot-x', '-25deg');
-                cube.style.setProperty('--rot-y', '45deg');
-                setTimeout(() => { if (!isOpen) scene.classList.add('idle'); }, 1200);
+                cube.style.setProperty('--rot-x', '-25deg'); cube.style.setProperty('--rot-y', '45deg');
+                setTimeout(() => { if (!isOpen) scene.classList.add('idle') }, 1200);
             }
         }
 
         function checkPaymentAndOpen() {
-            if (isPaying) return;
-            const invoiceSlug = "$QYGD-2BXyEmoFAAAsczOIEMbHFo";
-            isPaying = true;
+            if (isOpen) return;
 
+            // FALLBACK MODE: User pays manualy, then taps again
+            if (useFallback) {
+                hint.innerText = "OPENING...";
+                vibrateSuccess();
+                openBox();
+                return;
+            }
+
+            isPaying = true;
             hint.innerText = "OPENING PAYMENT...";
             hint.style.opacity = 1;
+            const invoiceSlug = "$QYGD-2BXyEmoFAAAsczOIEMbHFo";
 
             if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
 
             if (tg) {
                 try {
                     tg.openInvoice(invoiceSlug, (status) => {
-                        // PERMISSIVE LOGIC:
-                        // User said: "Don't wait for bot confirmation, open immediately"
-                        // So we open on anything except strictly 'cancelled'.
                         if (status === "cancelled") {
-                            hint.innerText = "CANCELLED";
-                            isPaying = false;
-                            resetHint();
+                            hint.innerText = "CANCELLED"; isPaying = false; resetHint();
                         } else {
-                            // Status could be 'paid', 'pending', 'failed'.
-                            // We assume if it wasn't cancelled, user tried to pay.
-                            hint.innerText = "OPENING...";
-                            vibrateSuccess();
-                            setTimeout(openBox, 500);
+                            hint.innerText = "SUCCESS! OPENING...";
+                            vibrateSuccess(); setTimeout(openBox, 500);
                         }
                     });
                 } catch (err) {
-                    hint.innerText = "ERROR";
-                    tg.openTelegramLink("https://t.me/" + invoiceSlug);
+                    // ERROR - FORCE FALLBACK
+                    hint.innerText = "PAY, THEN TAP CUBE";
+                    // try fallback link
+                    try { tg.openTelegramLink("https://t.me/" + invoiceSlug); } catch (e) { window.open("https://t.me/" + invoiceSlug); }
+
                     isPaying = false;
-                    resetHint();
+                    useFallback = true; // Enable manual open on next tap
                 }
             } else {
                 window.open("https://t.me/" + invoiceSlug, "_blank");
-                isPaying = false;
-                resetHint();
+                hint.innerText = "TAP CUBE AFTER PAYING (TEST)";
+                isPaying = false; useFallback = true;
             }
         }
 
-        function resetHint() {
-            setTimeout(() => {
-                if (!isPaying) hint.innerText = "TAP TO PAY & OPEN";
-            }, 3000);
-        }
-
+        function resetHint() { setTimeout(() => { if (!isPaying && !useFallback) hint.innerText = "TAP TO PAY & OPEN"; }, 3000); }
         function vibrateSuccess() {
             if (!tg?.HapticFeedback) return;
             tg.HapticFeedback.notificationOccurred('success');
             setTimeout(() => tg.HapticFeedback.impactOccurred('rigid'), 200);
             setTimeout(() => tg.HapticFeedback.impactOccurred('heavy'), 400);
-            setTimeout(() => tg.HapticFeedback.impactOccurred('heavy'), 600);
         }
-
         function openBox() {
-            if (isOpen) return;
-            isOpen = true;
-            hint.style.display = 'none'; // Hide hint
-
+            if (isOpen) return; isOpen = true; hint.style.display = 'none';
             if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
-
             cube.classList.add('shaking');
             setTimeout(() => {
-                cube.classList.remove('shaking');
-                cube.classList.add('opening');
+                cube.classList.remove('shaking'); cube.classList.add('opening');
                 document.getElementById('splashOverlay').style.clipPath = 'circle(150% at 50% 50%)';
                 setTimeout(() => {
                     scene.style.display = 'none';
-                    const modal = document.getElementById('revealModal');
-                    modal.style.display = 'flex';
-                    void modal.offsetWidth; modal.style.opacity = '1';
+                    const m = document.getElementById('revealModal'); m.style.display = 'flex';
+                    void m.offsetWidth; m.style.opacity = '1';
                     document.getElementById('splashOverlay').style.opacity = '0';
                 }, 400);
             }, 800);
