@@ -306,12 +306,39 @@
     </div>
     <script>
         const tg = window.Telegram?.WebApp;
-        if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor('#0f1c3f'); tg.setBackgroundColor('#0f1c3f'); tg.enableClosingConfirmation(); }
+
+        // --- EVENT LISTENER FOR PAYMENT ---
+        if (tg) {
+            tg.ready();
+            tg.expand();
+            tg.setHeaderColor('#0f1c3f');
+            tg.setBackgroundColor('#0f1c3f');
+            tg.enableClosingConfirmation();
+
+            // USER'S REQUESTED PATTERN
+            tg.onEvent('invoiceClosed', (ev) => {
+                isPaying = false; // Unlock UI
+
+                if (ev.status === 'paid' || ev.status === 'pending') {
+                    // SUCCESS
+                    hint.innerText = "SUCCESS! OPENING...";
+                    vibrateSuccess();
+                    openBox();
+                } else if (ev.status === 'failed') {
+                    hint.innerText = "PAYMENT FAILED";
+                    resetHint();
+                } else {
+                    hint.innerText = "CANCELLED";
+                    resetHint();
+                }
+            });
+        }
+
         const starContainer = document.getElementById('stars');
         for (let i = 0; i < 80; i++) { const s = document.createElement('div'); s.className = 'star'; const sz = Math.random() * 3 + 1; s.style.width = sz + 'px'; s.style.height = sz + 'px'; s.style.left = Math.random() * 100 + 'vw'; s.style.top = Math.random() * 100 + 'vh'; s.style.setProperty('--dur', (Math.random() * 3 + 2) + 's'); starContainer.appendChild(s); }
 
         const scene = document.getElementById('scene'), cube = document.getElementById('cube'), hint = document.getElementById('hint');
-        let isDragging = false, isPaying = false, useFallback = false, isTouchDetected = false, lastPayTime = 0;
+        let isDragging = false, isPaying = false, isTouchDetected = false, lastPayTime = 0;
         let startX, startY, dragDist = 0, rotX = -25, rotY = 45, isOpen = false;
 
         scene.addEventListener('mousedown', startDrag); scene.addEventListener('touchstart', startDrag, { passive: false });
@@ -349,50 +376,35 @@
         }
 
         function checkPaymentAndOpen() {
-            if (isOpen) return;
-
-            // FALLBACK MODE: User pays manualy, then taps again
-            if (useFallback) {
-                hint.innerText = "OPENING...";
-                vibrateSuccess();
-                openBox();
-                return;
-            }
-
+            if (isOpen || isPaying) return;
             isPaying = true;
+            const invoiceSlug = "$QYGD-2BXyEmoFAAAsczOIEMbHFo";
             hint.innerText = "OPENING PAYMENT...";
             hint.style.opacity = 1;
-            const invoiceSlug = "$QYGD-2BXyEmoFAAAsczOIEMbHFo";
 
             if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
 
             if (tg) {
                 try {
-                    tg.openInvoice(invoiceSlug, (status) => {
-                        if (status === "cancelled") {
-                            hint.innerText = "CANCELLED"; isPaying = false; resetHint();
-                        } else {
-                            hint.innerText = "SUCCESS! OPENING...";
-                            vibrateSuccess(); setTimeout(openBox, 500);
-                        }
-                    });
+                    // Using NO callback, strictly relying on onEvent
+                    tg.openInvoice(invoiceSlug);
                 } catch (err) {
-                    // ERROR - FORCE FALLBACK
-                    hint.innerText = "PAY, THEN TAP CUBE";
-                    // try fallback link
-                    try { tg.openTelegramLink("https://t.me/" + invoiceSlug); } catch (e) { window.open("https://t.me/" + invoiceSlug); }
-
-                    isPaying = false;
-                    useFallback = true; // Enable manual open on next tap
+                    // Fallback if openInvoice fails synchronously
+                    hint.innerText = "ERR, USING LINK";
+                    setTimeout(() => {
+                        window.open("https://t.me/" + invoiceSlug, "_blank");
+                        isPaying = false; resetHint();
+                    }, 1000);
                 }
             } else {
+                // Browser
                 window.open("https://t.me/" + invoiceSlug, "_blank");
-                hint.innerText = "TAP CUBE AFTER PAYING (TEST)";
-                isPaying = false; useFallback = true;
+                hint.innerText = "BROWSER MODE";
+                isPaying = false; resetHint();
             }
         }
 
-        function resetHint() { setTimeout(() => { if (!isPaying && !useFallback) hint.innerText = "TAP TO PAY & OPEN"; }, 3000); }
+        function resetHint() { setTimeout(() => { if (!isPaying) hint.innerText = "TAP TO PAY & OPEN"; }, 3000); }
         function vibrateSuccess() {
             if (!tg?.HapticFeedback) return;
             tg.HapticFeedback.notificationOccurred('success');
