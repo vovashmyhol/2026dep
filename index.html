@@ -307,7 +307,10 @@
     <script>
         const tg = window.Telegram?.WebApp;
 
-        // --- EVENT LISTENER FOR PAYMENT ---
+        // --- STRICT PATTERN FROM USER REQUEST ---
+        const invoiceSlug = "$QYGD-2BXyEmoFAAAsczOIEMbHFo";
+
+        // 1. Setup Listener
         if (tg) {
             tg.ready();
             tg.expand();
@@ -315,20 +318,15 @@
             tg.setBackgroundColor('#0f1c3f');
             tg.enableClosingConfirmation();
 
-            // USER'S REQUESTED PATTERN
             tg.onEvent('invoiceClosed', (ev) => {
-                isPaying = false; // Unlock UI
-
-                if (ev.status === 'paid' || ev.status === 'pending') {
-                    // SUCCESS
+                // User logic: if status is paid -> action
+                if (ev.status === 'paid') {
                     hint.innerText = "SUCCESS! OPENING...";
                     vibrateSuccess();
                     openBox();
-                } else if (ev.status === 'failed') {
-                    hint.innerText = "PAYMENT FAILED";
-                    resetHint();
                 } else {
-                    hint.innerText = "CANCELLED";
+                    hint.innerText = "STATUS: " + ev.status;
+                    isPaying = false;
                     resetHint();
                 }
             });
@@ -378,31 +376,19 @@
         function checkPaymentAndOpen() {
             if (isOpen || isPaying) return;
             isPaying = true;
-            const invoiceSlug = "$QYGD-2BXyEmoFAAAsczOIEMbHFo";
-            hint.innerText = "OPENING PAYMENT...";
+
+            hint.innerText = "OPENING INVOICE...";
             hint.style.opacity = 1;
 
-            if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
-
             if (tg) {
-                try {
-                    // Call with callback to prevent Crash, but logic is in onEvent
-                    tg.openInvoice(invoiceSlug, function (status) {
-                        console.log("Invoice Callback Status:", status);
-                    });
-                } catch (err) {
-                    hint.innerText = "ERR: " + err;
-                    setTimeout(() => {
-                        // Fallback
-                        tg.openTelegramLink("https://t.me/" + invoiceSlug);
-                        isPaying = false; resetHint();
-                    }, 1000);
-                }
+                // 2. Call Method EXACTLY as requested (no callback)
+                // "Открываем Stars invoice"
+                tg.openInvoice(invoiceSlug);
             } else {
-                // Browser
+                // Browser test
                 window.open("https://t.me/" + invoiceSlug, "_blank");
-                hint.innerText = "BROWSER MODE";
-                isPaying = false; resetHint();
+                isPaying = false;
+                resetHint();
             }
         }
 
