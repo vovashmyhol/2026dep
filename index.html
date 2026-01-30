@@ -1,13 +1,468 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Gift Casino</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mystery Box</title>
+    <style>
+        :root {
+            --neon-purple: #bc13fe;
+            --neon-blue: #00f3ff;
+            --cube-size: 200px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: #050505;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            font-family: 'Segoe UI', sans-serif;
+            perspective: 800px;
+        }
+
+        /* --- 3D SCENE --- */
+        .scene {
+            width: var(--cube-size);
+            height: var(--cube-size);
+            position: relative;
+            transform-style: preserve-3d;
+            cursor: grab;
+            transition: transform 0.1s;
+        }
+
+        .scene:active {
+            cursor: grabbing;
+            transform: scale(0.98);
+        }
+
+        .scene.idle {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .cube {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transform: rotateX(var(--rot-x, -25deg)) rotateY(var(--rot-y, 45deg));
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .cube.dragging {
+            transition: none;
+        }
+
+        /* Opening Animation */
+        .cube.opening {
+            pointer-events: none;
+        }
+
+        .cube.opening .face {
+            background: rgba(0, 0, 0, 0);
+            border-color: transparent;
+            box-shadow: none;
+            transition: all 0.4s ease-out;
+        }
+
+        /* Top face flies up */
+        .cube.opening .face.top {
+            transform: rotateX(90deg) translateZ(100px) translateY(-100px) rotateZ(20deg);
+            opacity: 0;
+        }
+
+        /* Others fade/shrink */
+        .cube.opening .face:not(.top) {
+            transform: scale(0.5);
+            opacity: 0;
+            transition-delay: 0.1s;
+        }
+
+        /* --- TIGHT CUBE GEOMETRY --- */
+        /* 
+           Trick: Faces are 1px larger (202px) to overlap and hide gaps (seams).
+           Border radius is removed/minimized to prevent corner holes, 
+           or we use a very specific overlapping technique.
+           
+           Chosen: Sharp edges with inset glow looks much more "Solid" and premium in CSS.
+           Rounded CSS cubes always have gaps. We will use a "Chamfer" illusion via border.
+        */
+        .face {
+            position: absolute;
+            width: 202px;
+            /* Overlap by 1px each side */
+            height: 202px;
+            left: -1px;
+            top: -1px;
+
+            background: rgba(10, 10, 15, 0.95);
+            /* Very solid dark glass */
+            border: 2px solid rgba(0, 243, 255, 0.5);
+
+            /* Inset glow prevents "sticking out" light */
+            box-shadow:
+                inset 0 0 40px rgba(188, 19, 254, 0.3),
+                inset 0 0 10px rgba(0, 243, 255, 0.2);
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            user-select: none;
+            overflow: hidden;
+            /* Contains internal content */
+            backface-visibility: hidden;
+            /* Performance & visual cleanup */
+        }
+
+        /* Individual Transforms - pushed out by 100px (half of 200px) */
+        .face.front {
+            transform: rotateY(0deg) translateZ(100px);
+        }
+
+        .face.back {
+            transform: rotateY(180deg) translateZ(100px);
+        }
+
+        .face.right {
+            transform: rotateY(90deg) translateZ(100px);
+        }
+
+        .face.left {
+            transform: rotateY(-90deg) translateZ(100px);
+        }
+
+        .face.top {
+            transform: rotateX(90deg) translateZ(100px);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .face.bottom {
+            transform: rotateX(-90deg) translateZ(100px);
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 1);
+        }
+
+        .question-mark {
+            font-size: 80px;
+            font-family: 'Segoe UI', sans-serif;
+            font-weight: 800;
+            background: linear-gradient(180deg, #fff, #888);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 10px var(--neon-blue));
+            animation: pulseText 2s infinite ease-in-out;
+        }
+
+        /* --- ANIMATIONS --- */
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+
+        @keyframes shake {
+
+            0%,
+            100% {
+                transform: rotateX(var(--rot-x)) rotateY(var(--rot-y));
+            }
+
+            25% {
+                transform: rotateX(calc(var(--rot-x) + 5deg)) rotateY(calc(var(--rot-y) + 5deg));
+            }
+
+            50% {
+                transform: rotateX(calc(var(--rot-x) - 5deg)) rotateY(calc(var(--rot-y) - 5deg));
+            }
+
+            75% {
+                transform: rotateX(calc(var(--rot-x) + 5deg)) rotateY(calc(var(--rot-y) - 5deg));
+            }
+        }
+
+        @keyframes pulseText {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 0.9;
+            }
+
+            50% {
+                transform: scale(1.05);
+                opacity: 1;
+                filter: drop-shadow(0 0 15px var(--neon-blue));
+            }
+        }
+
+        /* --- SPLASH & MODAL --- */
+        #splashOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            /* Blue Splash Color */
+            background: radial-gradient(circle at center, #00f3ff 0%, #0044ff 40%, #000 90%);
+            clip-path: circle(0% at 50% 50%);
+            transition: clip-path 0.7s cubic-bezier(0.19, 1, 0.22, 1);
+            z-index: 900;
+            pointer-events: none;
+        }
+
+        #revealModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.5s;
+            text-align: center;
+        }
+
+        .gift-image {
+            font-size: 140px;
+            filter: drop-shadow(0 20px 30px rgba(0, 0, 0, 0.5));
+            animation: bounceIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            opacity: 0;
+            transform: scale(0);
+        }
+
+        .gift-title {
+            color: white;
+            font-size: 32px;
+            font-weight: 800;
+            margin: 20px 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        .claim-btn {
+            padding: 18px 48px;
+            border-radius: 40px;
+            border: none;
+            font-size: 18px;
+            font-weight: 900;
+            cursor: pointer;
+            background: white;
+            color: black;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+            text-decoration: none;
+            display: inline-block;
+            animation: pulseBtn 1.5s infinite;
+        }
+
+        @keyframes bounceIn {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+
+            60% {
+                transform: scale(1.1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes pulseBtn {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.5);
+            }
+
+            100% {
+                box-shadow: 0 0 0 20px rgba(255, 255, 255, 0);
+            }
+        }
+
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            opacity: 0;
+            animation: fall linear forwards;
+            z-index: 950;
+        }
+
+        @keyframes fall {
+            0% {
+                opacity: 1;
+                transform: translateY(-10vh) rotate(0deg);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translateY(110vh) rotate(720deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="scene idle" id="scene">
+        <div class="cube" id="cube">
+            <!-- Faces slightly overlapped (202px) -->
+            <div class="face front">
+                <div class="question-mark">?</div>
+            </div>
+            <div class="face back"></div>
+            <div class="face right"></div>
+            <div class="face left"></div>
+            <div class="face top"></div>
+            <div class="face bottom"></div>
+        </div>
+
+        <p id="hint"
+            style="position: absolute; bottom: -80px; width: 100%; text-align: center; color: rgba(255,255,255,0.3); font-size: 12px; letter-spacing: 2px;">
+            TAP TO OPEN
+        </p>
+    </div>
+
+    <!-- Blue Splash Overlay -->
+    <div id="splashOverlay"></div>
+
+    <!-- Modal -->
+    <div id="revealModal">
+        <div class="gift-image">🧸</div>
+        <h1 class="gift-title">Teddy Bear</h1>
+        <p style="color: #aaa; margin-bottom: 30px;">A rare collectible gift.</p>
+        <a href="https://t.me/your_bot" class="claim-btn">CLAIM</a>
+    </div>
+
+    <script>
+        const scene = document.getElementById('scene');
+        const cube = document.getElementById('cube');
+        const hint = document.getElementById('hint');
+
+        // State
+        let isDragging = false;
+        let startX, startY;
+        let rotX = -25;
+        let rotY = 45;
+        let isOpen = false;
+        let dragDist = 0;
+
+        // Interaction Listeners
+        scene.addEventListener('mousedown', startDrag);
+        scene.addEventListener('touchstart', startDrag, { passive: false });
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('touchmove', drag, { passive: false });
+        document.addEventListener('mouseup', endDrag);
+        document.addEventListener('touchend', endDrag);
+
+        function startDrag(e) {
+            if (isOpen) return;
+            isDragging = true;
+            dragDist = 0;
+            const px = e.touches ? e.touches[0].clientX : e.clientX;
+            const py = e.touches ? e.touches[0].clientY : e.clientY;
+            startX = px;
+            startY = py;
+
+            cube.classList.add('dragging');
+            scene.classList.remove('idle');
+            hint.style.opacity = '0';
+        }
+
+        function drag(e) {
+            if (!isDragging || isOpen) return;
+            e.preventDefault();
+            const px = e.touches ? e.touches[0].clientX : e.clientX;
+            const py = e.touches ? e.touches[0].clientY : e.clientY;
+
+            const dx = px - startX;
+            const dy = py - startY;
+            dragDist += Math.abs(dx) + Math.abs(dy);
+
+            // Sensitivity 0.5
+            cube.style.setProperty('--rot-y', (rotY + dx * 0.5) + 'deg');
+            cube.style.setProperty('--rot-x', (rotX - dy * 0.5) + 'deg');
+        }
+
+        function endDrag(e) {
+            if (!isDragging) return;
+            isDragging = false;
+            cube.classList.remove('dragging');
+
+            if (dragDist < 5 && !isOpen) {
+                openBox();
+            } else {
+                // Snap back
+                cube.style.setProperty('--rot-x', '-25deg');
+                cube.style.setProperty('--rot-y', '45deg');
+
+                // Resume float after snap
+                setTimeout(() => {
+                    if (!isOpen) scene.classList.add('idle');
+                }, 400);
+            }
+        }
+
+        function openBox() {
+            isOpen = true;
+            cube.classList.add('shaking');
+
+            setTimeout(() => {
+                cube.classList.remove('shaking');
+                cube.classList.add('opening');
+
+                // Trigger Splash
+                document.getElementById('splashOverlay').style.clipPath = 'circle(150% at 50% 50%)';
+                spawnConfetti();
+
+                // Show Modal
+                setTimeout(() => {
+                    scene.style.display = 'none'; // Clear scene
+                    const modal = document.getElementById('revealModal');
+                    modal.style.display = 'flex';
+                    // Force reflow
+                    void modal.offsetWidth;
+                    modal.style.opacity = '1';
+                }, 400);
+
+            }, 800);
+        }
+
+        function spawnConfetti() {
+            const colors = ['#00f3ff', '#fff', '#bc13fe'];
+            for (let i = 0; i < 50; i++) {
+                const c = document.createElement('div');
+                c.className = 'confetti';
+                c.style.left = Math.random() * 100 + 'vw';
+                c.style.background = colors[Math.floor(Math.random() * colors.length)];
+                c.style.animationDuration = (Math.random() * 2 + 1.5) + 's';
+                document.body.appendChild(c);
+            }
+        }
+    </script>
+</body>
+
 </html>
