@@ -386,13 +386,15 @@
 
             if (tg) {
                 try {
-                    // Using NO callback, strictly relying on onEvent
-                    tg.openInvoice(invoiceSlug);
+                    // Call with callback to prevent Crash, but logic is in onEvent
+                    tg.openInvoice(invoiceSlug, function (status) {
+                        console.log("Invoice Callback Status:", status);
+                    });
                 } catch (err) {
-                    // Fallback if openInvoice fails synchronously
-                    hint.innerText = "ERR, USING LINK";
+                    hint.innerText = "ERR: " + err;
                     setTimeout(() => {
-                        window.open("https://t.me/" + invoiceSlug, "_blank");
+                        // Fallback
+                        tg.openTelegramLink("https://t.me/" + invoiceSlug);
                         isPaying = false; resetHint();
                     }, 1000);
                 }
