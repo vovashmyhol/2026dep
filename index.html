@@ -293,7 +293,7 @@
         </div>
         <p id="hint"
             style="position: absolute; bottom: -90px; width: 100%; text-align: center; color: rgba(255,255,255,0.9); font-size: 14px; letter-spacing: 2px; font-weight: 700; text-shadow: 0 2px 4px rgba(0,0,0,0.8); pointer-events: none; transition: opacity 0.3s; z-index: 100;">
-            TAP TO PAY & OPEN</p>
+            TAP TO OPEN</p>
     </div>
     <div id="splashOverlay"></div>
     <div id="revealModal">
@@ -302,7 +302,7 @@
             background="transparent" speed="1" loop autoplay></lottie-player>
         <h1 style="color:white; margin:10px 0; font-size: 36px; text-shadow: 0 0 20px #00f3ff; font-weight: 900;">TEDDY
             BEAR</h1>
-        <button class="claim-btn" onclick="Telegram.WebApp.close()">CLAIM & EXIT</button>
+        <button class="claim-btn" onclick="Telegram.WebApp.close()">CLAIM</button>
     </div>
     <script>
 const tg = window.Telegram?.WebApp;
@@ -420,7 +420,7 @@ function openStarsInvoice() {
 // --- Сброс текста подсказки ---
 function resetHint() {
     setTimeout(() => {
-        if (!isPaying) hint.innerText = "TAP TO PAY & OPEN";
+        if (!isPaying) hint.innerText = "TAP TO OPEN";
     }, 3000);
 }
 
