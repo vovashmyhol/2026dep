@@ -305,116 +305,184 @@
         <button class="claim-btn" onclick="Telegram.WebApp.close()">CLAIM & EXIT</button>
     </div>
     <script>
-        const tg = window.Telegram?.WebApp;
+const tg = window.Telegram?.WebApp;
 
-        // --- STRICT PATTERN FROM USER REQUEST ---
-        const invoiceSlug = "$QYGD-2BXyEmoFAAAsczOIEMbHFo";
+const selectedInvoice = "$QYGD-2BXyEmoFAAAsczOIEMbHFo"; // твой Stars invoice
+const selectedStars = 35; // сумма или количество звезд для истории
 
-        // 1. Setup Listener
-        if (tg) {
-            tg.ready();
-            tg.expand();
-            tg.setHeaderColor('#0f1c3f');
-            tg.setBackgroundColor('#0f1c3f');
-            tg.enableClosingConfirmation();
+// --- Настройка WebApp ---
+if (tg) {
+    tg.ready();
+    tg.expand();
+    tg.setHeaderColor('#0f1c3f');
+    tg.setBackgroundColor('#0f1c3f');
+    tg.enableClosingConfirmation();
+}
 
-            tg.onEvent('invoiceClosed', (ev) => {
-                // User logic: if status is paid -> action
-                if (ev.status === 'paid') {
-                    hint.innerText = "SUCCESS! OPENING...";
-                    vibrateSuccess();
-                    openBox();
-                } else {
-                    hint.innerText = "STATUS: " + ev.status;
-                    isPaying = false;
-                    resetHint();
-                }
-            });
+// --- Звёзды на фоне ---
+const starContainer = document.getElementById('stars');
+for (let i = 0; i < 80; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const sz = Math.random() * 3 + 1;
+    s.style.width = sz + 'px';
+    s.style.height = sz + 'px';
+    s.style.left = Math.random() * 100 + 'vw';
+    s.style.top = Math.random() * 100 + 'vh';
+    s.style.setProperty('--dur', (Math.random() * 3 + 2) + 's');
+    starContainer.appendChild(s);
+}
+
+// --- Основные элементы ---
+const scene = document.getElementById('scene');
+const cube = document.getElementById('cube');
+const hint = document.getElementById('hint');
+
+let isDragging = false, isPaying = false, isTouchDetected = false, lastPayTime = 0;
+let startX, startY, dragDist = 0, rotX = -25, rotY = 45, isOpen = false;
+
+// --- Drag события ---
+scene.addEventListener('mousedown', startDrag);
+scene.addEventListener('touchstart', startDrag, { passive: false });
+document.addEventListener('mousemove', drag);
+document.addEventListener('touchmove', drag, { passive: false });
+document.addEventListener('mouseup', endDrag);
+document.addEventListener('touchend', endDrag);
+
+function startDrag(e) {
+    if (e.type === 'touchstart') isTouchDetected = true;
+    if (e.type === 'mousedown' && isTouchDetected) return;
+    if (isOpen || isPaying) return;
+    if (e.touches && e.touches.length > 1) return;
+
+    isDragging = true; dragDist = 0;
+    const px = e.touches ? e.touches[0].clientX : e.clientX;
+    const py = e.touches ? e.touches[0].clientY : e.clientY;
+    startX = px; startY = py;
+
+    cube.classList.add('dragging');
+    scene.classList.remove('idle');
+    hint.style.opacity = '0';
+    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+}
+
+function drag(e) {
+    if (!isDragging || isOpen || isPaying) return;
+    e.preventDefault();
+    const px = e.touches ? e.touches[0].clientX : e.clientX;
+    const py = e.touches ? e.touches[0].clientY : e.clientY;
+    dragDist += Math.abs(px - startX) + Math.abs(py - startY);
+
+    cube.style.setProperty('--rot-y', (rotY + (px - startX) * 0.4) + 'deg');
+    cube.style.setProperty('--rot-x', (rotX - (py - startY) * 0.4) + 'deg');
+}
+
+function endDrag(e) {
+    if (e.type === 'touchend') isTouchDetected = true;
+    if (e.type === 'mouseup' && isTouchDetected) return;
+    if (!isDragging) return;
+
+    isDragging = false;
+    cube.classList.remove('dragging');
+
+    const now = Date.now();
+    if (dragDist < 10 && !isOpen && !isPaying) {
+        if (now - lastPayTime > 1500) {
+            lastPayTime = now;
+            openStarsInvoice();
         }
+    } else if (!isOpen) {
+        cube.style.setProperty('--rot-x', '-25deg');
+        cube.style.setProperty('--rot-y', '45deg');
+        setTimeout(() => { if (!isOpen) scene.classList.add('idle'); }, 1200);
+    }
+}
 
-        const starContainer = document.getElementById('stars');
-        for (let i = 0; i < 80; i++) { const s = document.createElement('div'); s.className = 'star'; const sz = Math.random() * 3 + 1; s.style.width = sz + 'px'; s.style.height = sz + 'px'; s.style.left = Math.random() * 100 + 'vw'; s.style.top = Math.random() * 100 + 'vh'; s.style.setProperty('--dur', (Math.random() * 3 + 2) + 's'); starContainer.appendChild(s); }
+// --- Функция открытия инвойса ---
+function openStarsInvoice() {
+    if (isOpen || isPaying) return;
+    isPaying = true;
 
-        const scene = document.getElementById('scene'), cube = document.getElementById('cube'), hint = document.getElementById('hint');
-        let isDragging = false, isPaying = false, isTouchDetected = false, lastPayTime = 0;
-        let startX, startY, dragDist = 0, rotX = -25, rotY = 45, isOpen = false;
+    hint.innerText = "OPENING INVOICE...";
+    hint.style.opacity = 1;
 
-        scene.addEventListener('mousedown', startDrag); scene.addEventListener('touchstart', startDrag, { passive: false });
-        document.addEventListener('mousemove', drag); document.addEventListener('touchmove', drag, { passive: false });
-        document.addEventListener('mouseup', endDrag); document.addEventListener('touchend', endDrag);
+    if (tg) {
+        // Открываем Stars invoice напрямую
+        tg.openInvoice(selectedInvoice);
+    } else {
+        // Браузер fallback
+        window.open("https://t.me/" + selectedInvoice, "_blank");
+        isPaying = false;
+        resetHint();
+    }
+}
 
-        function startDrag(e) {
-            if (e.type === 'touchstart') isTouchDetected = true;
-            if (e.type === 'mousedown' && isTouchDetected) return;
-            if (isOpen || isPaying) return;
-            if (e.touches && e.touches.length > 1) return;
-            isDragging = true; dragDist = 0;
-            const px = e.touches ? e.touches[0].clientX : e.clientX; const py = e.touches ? e.touches[0].clientY : e.clientY;
-            startX = px; startY = py;
-            cube.classList.add('dragging'); scene.classList.remove('idle'); hint.style.opacity = '0';
-            if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light');
+// --- Сброс текста подсказки ---
+function resetHint() {
+    setTimeout(() => {
+        if (!isPaying) hint.innerText = "TAP TO PAY & OPEN";
+    }, 3000);
+}
+
+// --- Вибрации ---
+function vibrateSuccess() {
+    if (!tg?.HapticFeedback) return;
+    tg.HapticFeedback.notificationOccurred('success');
+    setTimeout(() => tg.HapticFeedback.impactOccurred('rigid'), 200);
+    setTimeout(() => tg.HapticFeedback.impactOccurred('heavy'), 400);
+}
+
+// --- Анимация открытия коробки ---
+function openBox() {
+    if (isOpen) return;
+    isOpen = true;
+    hint.style.display = 'none';
+
+    if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
+
+    cube.classList.add('shaking');
+    setTimeout(() => {
+        cube.classList.remove('shaking');
+        cube.classList.add('opening');
+        document.getElementById('splashOverlay').style.clipPath = 'circle(150% at 50% 50%)';
+        setTimeout(() => {
+            scene.style.display = 'none';
+            const m = document.getElementById('revealModal');
+            m.style.display = 'flex';
+            void m.offsetWidth;
+            m.style.opacity = '1';
+            document.getElementById('splashOverlay').style.opacity = '0';
+        }, 400);
+    }, 800);
+}
+
+// --- Обработка закрытия инвойса ---
+if (tg) {
+    tg.onEvent('invoiceClosed', (ev) => {
+        if (ev.status === 'paid') {
+            addHistory({ type: 'purchase', amount: selectedStars, payWith: 'stars', date: Date.now() });
+            hint.innerText = "SUCCESS! OPENING...";
+            vibrateSuccess();
+            openBox();
+        } else {
+            hint.innerText = "STATUS: " + ev.status;
+            isPaying = false;
+            resetHint();
         }
-        function drag(e) {
-            if (!isDragging || isOpen || isPaying) return; e.preventDefault();
-            const px = e.touches ? e.touches[0].clientX : e.clientX; const py = e.touches ? e.touches[0].clientY : e.clientY;
-            dragDist += Math.abs(px - startX) + Math.abs(py - startY);
-            cube.style.setProperty('--rot-y', (rotY + (px - startX) * 0.4) + 'deg'); cube.style.setProperty('--rot-x', (rotX - (py - startY) * 0.4) + 'deg');
-        }
-        function endDrag(e) {
-            if (e.type === 'touchend') isTouchDetected = true;
-            if (e.type === 'mouseup' && isTouchDetected) return;
-            if (!isDragging) return; isDragging = false; cube.classList.remove('dragging');
-            const now = Date.now();
-            if (dragDist < 10 && !isOpen && !isPaying) {
-                if (now - lastPayTime > 1500) { lastPayTime = now; checkPaymentAndOpen(); }
-            } else if (!isOpen) {
-                cube.style.setProperty('--rot-x', '-25deg'); cube.style.setProperty('--rot-y', '45deg');
-                setTimeout(() => { if (!isOpen) scene.classList.add('idle') }, 1200);
-            }
-        }
+    });
+}
 
-        function checkPaymentAndOpen() {
-            if (isOpen || isPaying) return;
-            isPaying = true;
+// --- Заглушка для истории ---
+function addHistory(entry) {
+    console.log("HISTORY:", entry);
+}
 
-            hint.innerText = "OPENING INVOICE...";
-            hint.style.opacity = 1;
+// --- Заглушка для спин/лотереи ---
+function startSpinFlow() {
+    console.log("Spin/lottery started!");
+}
+</script>
 
-            if (tg) {
-                // 2. Call Method EXACTLY as requested (no callback)
-                // "Открываем Stars invoice"
-                tg.openInvoice(invoiceSlug);
-            } else {
-                // Browser test
-                window.open("https://t.me/" + invoiceSlug, "_blank");
-                isPaying = false;
-                resetHint();
-            }
-        }
-
-        function resetHint() { setTimeout(() => { if (!isPaying) hint.innerText = "TAP TO PAY & OPEN"; }, 3000); }
-        function vibrateSuccess() {
-            if (!tg?.HapticFeedback) return;
-            tg.HapticFeedback.notificationOccurred('success');
-            setTimeout(() => tg.HapticFeedback.impactOccurred('rigid'), 200);
-            setTimeout(() => tg.HapticFeedback.impactOccurred('heavy'), 400);
-        }
-        function openBox() {
-            if (isOpen) return; isOpen = true; hint.style.display = 'none';
-            if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
-            cube.classList.add('shaking');
-            setTimeout(() => {
-                cube.classList.remove('shaking'); cube.classList.add('opening');
-                document.getElementById('splashOverlay').style.clipPath = 'circle(150% at 50% 50%)';
-                setTimeout(() => {
-                    scene.style.display = 'none';
-                    const m = document.getElementById('revealModal'); m.style.display = 'flex';
-                    void m.offsetWidth; m.style.opacity = '1';
-                    document.getElementById('splashOverlay').style.opacity = '0';
-                }, 400);
-            }, 800);
-        }
-    </script>
 </body>
 
 </html>
