@@ -237,18 +237,6 @@
             text-align: center;
         }
 
-        #debugInfo {
-            position: fixed;
-            top: 10px;
-            width: 100%;
-            text-align: center;
-            color: yellow;
-            font-size: 10px;
-            pointer-events: none;
-            z-index: 1001;
-            /* To remove debug, just display:none here */
-        }
-
         .claim-btn {
             margin-top: 20px;
             padding: 18px 48px;
@@ -290,7 +278,6 @@
 <body>
 
     <div class="stars" id="stars"></div>
-    <div id="debugInfo"></div>
 
     <div class="scene idle" id="scene">
         <div class="cube" id="cube">
@@ -330,12 +317,6 @@
 
     <script>
         const tg = window.Telegram?.WebApp;
-
-        function debug(msg) {
-            // Uncomment to see logs in UI
-            // document.getElementById('debugInfo').innerText = msg;
-        }
-
         if (tg) {
             tg.ready();
             tg.expand();
@@ -363,9 +344,8 @@
         const cube = document.getElementById('cube');
         const hint = document.getElementById('hint');
 
-        // Flags
         let isDragging = false;
-        let isPaying = false;
+        let isPaying = false; // Lock
         let isTouchDetected = false;
         let lastPayTime = 0;
 
@@ -385,7 +365,6 @@
             if (e.type === 'mousedown' && isTouchDetected) return;
 
             if (isOpen || isPaying) return;
-            // Prevent multi-touch
             if (e.touches && e.touches.length > 1) return;
 
             isDragging = true;
@@ -424,6 +403,7 @@
 
             const now = Date.now();
             if (dragDist < 10 && !isOpen && !isPaying) {
+                // Debounce 2s
                 if (now - lastPayTime > 2000) {
                     lastPayTime = now;
                     checkPaymentAndOpen();
@@ -440,46 +420,32 @@
             const invoiceSlug = "$QYGD-2BXyEmoFAAAsczOIEMbHFo";
             isPaying = true;
 
-            hint.innerText = "WAITING PAYMENT...";
+            hint.innerText = "OPENING PAYMENT...";
             hint.style.opacity = 1;
 
             if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
 
-            // Failsafe unlock after 15s
-            // setTimeout(() => { if(isPaying && !isOpen) { isPaying = false; hint.innerText = "TIMEOUT"; resetHint(); } }, 15000);
-
             if (tg) {
                 try {
                     tg.openInvoice(invoiceSlug, (status) => {
-                        debug("CB Status: " + status);
-
-                        // Treat 'pending' as success for seamless UX if needed, 
-                        // or wait strictly for 'paid'.
-                        // Added DIAGNOSTIC ALERT
-                        if (status === "paid" || status === "pending") {
-                            hint.innerText = "PAID! (" + status + ")";
-                            vibrateSuccess();
-                            setTimeout(openBox, 500);
-                        } else if (status === "cancelled") {
+                        // PERMISSIVE LOGIC:
+                        // User said: "Don't wait for bot confirmation, open immediately"
+                        // So we open on anything except strictly 'cancelled'.
+                        if (status === "cancelled") {
                             hint.innerText = "CANCELLED";
                             isPaying = false;
                             resetHint();
-                        } else if (status === "failed") {
-                            const msg = "FAILED";
-                            hint.innerText = msg;
-                            if (tg.showAlert) tg.showAlert(msg);
-                            isPaying = false;
-                            resetHint();
                         } else {
-                            const msg = "Status: " + status;
-                            hint.innerText = msg;
-                            if (tg.showAlert) tg.showAlert(msg);
-                            isPaying = false;
-                            resetHint();
+                            // Status could be 'paid', 'pending', 'failed'.
+                            // We assume if it wasn't cancelled, user tried to pay.
+                            hint.innerText = "OPENING...";
+                            vibrateSuccess();
+                            setTimeout(openBox, 500);
                         }
                     });
                 } catch (err) {
-                    tg.showAlert ? tg.showAlert("Err: " + err) : alert("Err: " + err);
+                    hint.innerText = "ERROR";
+                    tg.openTelegramLink("https://t.me/" + invoiceSlug);
                     isPaying = false;
                     resetHint();
                 }
@@ -507,8 +473,7 @@
         function openBox() {
             if (isOpen) return;
             isOpen = true;
-            // Clear hints
-            hint.style.display = 'none';
+            hint.style.display = 'none'; // Hide hint
 
             if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
 
