@@ -237,6 +237,18 @@
             text-align: center;
         }
 
+        #debugInfo {
+            position: fixed;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            color: yellow;
+            font-size: 10px;
+            pointer-events: none;
+            z-index: 1001;
+            /* To remove debug, just display:none here */
+        }
+
         .claim-btn {
             margin-top: 20px;
             padding: 18px 48px;
@@ -278,6 +290,7 @@
 <body>
 
     <div class="stars" id="stars"></div>
+    <div id="debugInfo"></div>
 
     <div class="scene idle" id="scene">
         <div class="cube" id="cube">
@@ -298,7 +311,7 @@
         </div>
 
         <p id="hint"
-            style="position: absolute; bottom: -80px; width: 100%; text-align: center; color: rgba(255,255,255,0.6); font-size: 14px; letter-spacing: 2px; font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.5); pointer-events: none; transition: opacity 0.3s;">
+            style="position: absolute; bottom: -80px; width: 100%; text-align: center; color: rgba(255,255,255,0.6); font-size: 14px; letter-spacing: 2px; font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.5); pointer-events: none; transition: opacity 0.3s; z-index: 100;">
             TAP TO PAY & OPEN
         </p>
     </div>
@@ -317,6 +330,12 @@
 
     <script>
         const tg = window.Telegram?.WebApp;
+
+        function debug(msg) {
+            // Uncomment to see logs in UI
+            // document.getElementById('debugInfo').innerText = msg;
+        }
+
         if (tg) {
             tg.ready();
             tg.expand();
@@ -339,7 +358,7 @@
             starContainer.appendChild(s);
         }
 
-        // --- LOGIC ---
+        // --- CUBE LOGIC ---
         const scene = document.getElementById('scene');
         const cube = document.getElementById('cube');
         const hint = document.getElementById('hint');
@@ -347,14 +366,13 @@
         // Flags
         let isDragging = false;
         let isPaying = false;
-        let isTouchDetected = false; // GHOST DETECTION
-        let lastPayTime = 0;         // DEBOUNCE DETECTION
+        let isTouchDetected = false;
+        let lastPayTime = 0;
 
         let startX, startY, dragDist = 0;
         let rotX = -25, rotY = 45;
         let isOpen = false;
 
-        // EVENTS
         scene.addEventListener('mousedown', startDrag);
         scene.addEventListener('touchstart', startDrag, { passive: false });
         document.addEventListener('mousemove', drag);
@@ -363,11 +381,12 @@
         document.addEventListener('touchend', endDrag);
 
         function startDrag(e) {
-            // FILTER GHOST CLICKS
             if (e.type === 'touchstart') isTouchDetected = true;
             if (e.type === 'mousedown' && isTouchDetected) return;
 
             if (isOpen || isPaying) return;
+            // Prevent multi-touch
+            if (e.touches && e.touches.length > 1) return;
 
             isDragging = true;
             dragDist = 0;
@@ -396,7 +415,6 @@
         }
 
         function endDrag(e) {
-            // Prevent synthetic mouse clicks processing
             if (e.type === 'touchend') isTouchDetected = true;
             if (e.type === 'mouseup' && isTouchDetected) return;
 
@@ -405,9 +423,7 @@
             cube.classList.remove('dragging');
 
             const now = Date.now();
-
             if (dragDist < 10 && !isOpen && !isPaying) {
-                // DEBOUNCE CLICK (Prevent duplicate payment)
                 if (now - lastPayTime > 2000) {
                     lastPayTime = now;
                     checkPaymentAndOpen();
@@ -424,52 +440,51 @@
             const invoiceSlug = "$QYGD-2BXyEmoFAAAsczOIEMbHFo";
             isPaying = true;
 
-            hint.innerText = "OPENING PAYMENT...";
+            hint.innerText = "WAITING PAYMENT...";
             hint.style.opacity = 1;
 
             if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
 
+            // Failsafe unlock after 15s
+            // setTimeout(() => { if(isPaying && !isOpen) { isPaying = false; hint.innerText = "TIMEOUT"; resetHint(); } }, 15000);
+
             if (tg) {
                 try {
-                    // Try Open Invoice
                     tg.openInvoice(invoiceSlug, (status) => {
-                        // LOG STATUS for User Debug
-                        console.log("Invoice Status:", status);
+                        debug("CB Status: " + status);
 
-                        if (status === "paid") {
-                            // SUCCESS
-                            hint.innerText = "SUCCESS!";
+                        // Treat 'pending' as success for seamless UX if needed, 
+                        // or wait strictly for 'paid'.
+                        // Added DIAGNOSTIC ALERT
+                        if (status === "paid" || status === "pending") {
+                            hint.innerText = "PAID! (" + status + ")";
                             vibrateSuccess();
-                            setTimeout(openBox, 800);
-                            // Unlock not needed as box opens
+                            setTimeout(openBox, 500);
                         } else if (status === "cancelled") {
                             hint.innerText = "CANCELLED";
-                            isPaying = false; // RELEASE LOCK
+                            isPaying = false;
                             resetHint();
                         } else if (status === "failed") {
-                            hint.innerText = "FAILED (Retrying Link)";
-                            setTimeout(() => {
-                                tg.openTelegramLink("https://t.me/" + invoiceSlug);
-                                isPaying = false; // RELEASE LOCK
-                                resetHint();
-                            }, 1000);
+                            const msg = "FAILED";
+                            hint.innerText = msg;
+                            if (tg.showAlert) tg.showAlert(msg);
+                            isPaying = false;
+                            resetHint();
                         } else {
-                            hint.innerText = "STATUS: " + status;
-                            isPaying = false; // RELEASE LOCK
+                            const msg = "Status: " + status;
+                            hint.innerText = msg;
+                            if (tg.showAlert) tg.showAlert(msg);
+                            isPaying = false;
                             resetHint();
                         }
                     });
                 } catch (err) {
-                    // Fallback
-                    hint.innerText = "ERROR - LINK";
-                    tg.openTelegramLink("https://t.me/" + invoiceSlug);
+                    tg.showAlert ? tg.showAlert("Err: " + err) : alert("Err: " + err);
                     isPaying = false;
                     resetHint();
                 }
             } else {
-                // Browser
                 window.open("https://t.me/" + invoiceSlug, "_blank");
-                hint.innerText = "BROWSER MODE";
                 isPaying = false;
                 resetHint();
             }
@@ -486,11 +501,14 @@
             tg.HapticFeedback.notificationOccurred('success');
             setTimeout(() => tg.HapticFeedback.impactOccurred('rigid'), 200);
             setTimeout(() => tg.HapticFeedback.impactOccurred('heavy'), 400);
+            setTimeout(() => tg.HapticFeedback.impactOccurred('heavy'), 600);
         }
 
         function openBox() {
             if (isOpen) return;
             isOpen = true;
+            // Clear hints
+            hint.style.display = 'none';
 
             if (tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('heavy');
 
