@@ -244,7 +244,7 @@
             cursor: pointer;
             background: linear-gradient(90deg, #ffd700, #ffaa00);
             color: black;
-            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+            box-shadow: 0 0 30px rgba(255, 217, 0, 0.541);
             text-decoration: none;
             display: inline-block;
             animation: pulseBtn 1.5s infinite;
@@ -353,6 +353,151 @@
             font-size: 14px;
             margin-top: 20px;
         }
+
+        /* --- Floating Badge Styles --- */
+        .floating-badge {
+            position: absolute;
+            /* Fix orientation: rotateZ to orient text correctly without mirroring */
+            transform: rotateZ(180deg);
+            z-index: 50;
+            pointer-events: none;
+            filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.3));
+        }
+
+        .badge-inner {
+            /* Transparent Gold Background */
+            background: rgba(229, 255, 0, 0.164);
+            border: 1px solid rgba(255, 217, 0, 0.281);
+            border-radius: 50px;
+            padding: 6px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.2), inset 0 0 15px rgba(229, 255, 0, 0.164);
+        }
+
+        .badge-icon {
+            width: 28px;
+            height: 28px;
+            object-fit: contain;
+            filter: drop-shadow(0 0 8px #ffcc00);
+            /* Slightly rotate image if needed, or leave as is if parent fix works */
+        }
+
+        .badge-text {
+            color: #ffd900c4;
+            font-family: 'Segoe UI', sans-serif;
+            font-weight: 650;
+            font-size: 22px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+            line-height: 1;
+        }
+
+        /* Gold Cross-shaped Sparkles */
+        .sparkle-cross {
+            position: absolute;
+            background: radial-gradient(circle, #fff 20%, transparent 70%);
+            width: 10px;
+            /* Smaller base size */
+            height: 10px;
+            opacity: 0;
+            animation: sparkleShine 2s infinite ease-in-out;
+        }
+
+        .sparkle-cross::before,
+        .sparkle-cross::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            background: #ffd700;
+            /* Gold core */
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 4px #ffd700, 0 0 8px #ffaa00;
+        }
+
+        .sparkle-cross::before {
+            width: 2px;
+            height: 100%;
+        }
+
+        .sparkle-cross::after {
+            width: 100%;
+            height: 2px;
+        }
+
+        .sp1 {
+            top: -8px;
+            left: -5px;
+            animation-delay: 0s;
+            transform: scale(0.6);
+        }
+
+        .sp2 {
+            bottom: -6px;
+            right: 8px;
+            animation-delay: 0.7s;
+            transform: scale(0.4);
+        }
+
+        .sp3 {
+            top: 5px;
+            right: -10px;
+            animation-delay: 1.3s;
+            transform: scale(0.7);
+        }
+
+        .sp4 {
+            bottom: 8px;
+            left: 0px;
+            animation-delay: 0.4s;
+            transform: scale(0.5);
+        }
+
+        .sp5 {
+            top: -10px;
+            right: 0px;
+            animation-delay: 1.0s;
+            transform: scale(0.6);
+        }
+
+        .sp6 {
+            bottom: 0px;
+            left: -12px;
+            animation-delay: 0.2s;
+            transform: scale(0.4);
+        }
+
+        .sp7 {
+            top: 0px;
+            right: -15px;
+            animation-delay: 1.5s;
+            transform: scale(0.5);
+        }
+
+        .sp8 {
+            bottom: -10px;
+            left: 15px;
+            animation-delay: 0.8s;
+            transform: scale(0.7);
+        }
+
+        @keyframes sparkleShine {
+
+            0%,
+            100% {
+                opacity: 0;
+                transform: scale(0.4) rotate(0deg);
+            }
+
+            50% {
+                opacity: 1;
+                transform: scale(1.1) rotate(45deg);
+            }
+        }
     </style>
 </head>
 
@@ -372,7 +517,24 @@
             <div class="face left">
                 <div class="question-mark">?</div>
             </div>
-            <div class="face top"></div>
+            <div class="face top">
+                <!-- Floating Badge Attached to Face -->
+                <div class="floating-badge">
+                    <div class="badge-inner">
+                        <img src="stars-DBKMczxe.png" class="badge-icon" alt="Star">
+                        <span class="badge-text">15</span>
+                    </div>
+                    <!-- Sparkling Cross Stars -->
+                    <div class="sparkle-cross sp1"></div>
+                    <div class="sparkle-cross sp2"></div>
+                    <div class="sparkle-cross sp3"></div>
+                    <div class="sparkle-cross sp4"></div>
+                    <div class="sparkle-cross sp5"></div>
+                    <div class="sparkle-cross sp6"></div>
+                    <div class="sparkle-cross sp7"></div>
+                    <div class="sparkle-cross sp8"></div>
+                </div>
+            </div>
             <div class="face bottom"></div>
         </div>
         <p id="hint"
@@ -384,7 +546,7 @@
         <div class="info-content">
             <p class="info-text">The box can contain gifts from 15 to 100 stars.</p>
             <p class="info-text">This is a beta version.</p>
-            <p class="info-text">If something goes wrong, there are no claims against the owner.</p>
+            <p class="info-text">If something goes wrong, there are no claims against the owner. </p>
         </div>
     </div>
     <div id="splashOverlay"></div>
@@ -399,7 +561,7 @@
     <script>
         const tg = window.Telegram?.WebApp;
 
-        const selectedInvoice = "https://t.me/$7798nnwy6UsyFQAA78LU8EKr0xo"; // твой Stars invoice
+        const selectedInvoice = "https://t.me/$QYGD-2BXyEmoFAAAsczOIEMbHFo"; // твой Stars invoice
         const selectedStars = 35; // сумма или количество звезд для истории
 
         // --- Настройка WebApp ---
