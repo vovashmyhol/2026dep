@@ -157,7 +157,9 @@
             font-weight: 800;
             background: linear-gradient(180deg, #fff, #8ec5ff);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
+            color: transparent;
             filter: drop-shadow(0 0 10px #00f3ff);
             animation: pulseText 3s infinite ease-in-out;
         }
@@ -498,6 +500,54 @@
                 transform: scale(1.1) rotate(45deg);
             }
         }
+
+        /* --- VOCO Footer Styles --- */
+        .voco-footer {
+            margin-top: 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 15px;
+            width: 100%;
+        }
+
+        .voco-link {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            text-decoration: none;
+            opacity: 0.8;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .voco-link:active {
+            opacity: 0.6;
+            transform: scale(0.98);
+        }
+
+        .voco-icon {
+            width: 21px;
+            height: 21px;
+            border-radius: 6px;
+            object-fit: contain;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .voco-text {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .voco-brand {
+            color: #d0f0ff;
+            font-weight: 800;
+            text-shadow: 0 0 1px rgba(0, 243, 255, 0.4);
+            margin-left: 3px;
+        }
     </style>
 </head>
 
@@ -546,7 +596,14 @@
         <div class="info-content">
             <p class="info-text">The box can contain gifts from 15 to 100 stars.</p>
             <p class="info-text">This is a beta version.</p>
-            <p class="info-text">If something goes wrong, there are no claims against the owner. </p>
+            <p class="info-text">If something goes wrong, there are no claims against the owner.</p>
+
+            <div class="voco-footer">
+                <a href="https://t.me/voco_in" class="voco-link" target="_blank">
+                    <img src="IMG_7628.PNG" class="voco-icon" alt="VOCO">
+                    <span class="voco-text">verified by <span class="voco-brand">VOCO</span></span>
+                </a>
+            </div>
         </div>
     </div>
     <div id="splashOverlay"></div>
