@@ -548,6 +548,243 @@
             text-shadow: 0 0 1px rgba(0, 243, 255, 0.4);
             margin-left: 3px;
         }
+
+        /* --- Cube Sparkles (White) --- */
+        .cube-sparkle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            opacity: 0;
+            animation: cubeSparkleShine 3s infinite ease-in-out;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .cube-sparkle::before,
+        .cube-sparkle::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            background: #ffffff;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 4px #ffffff, 0 0 8px #00f3ff;
+        }
+
+        .cube-sparkle::before {
+            width: 3px;
+            height: 100%;
+        }
+
+        .cube-sparkle::after {
+            width: 100%;
+            height: 3px;
+        }
+
+        @keyframes cubeSparkleShine {
+
+            0%,
+            100% {
+                opacity: 0;
+                transform: scale(0.4) rotate(0deg);
+            }
+
+            50% {
+                opacity: 0.7;
+                transform: scale(1.1) rotate(45deg);
+            }
+        }
+
+        /* Random positions for cube sparkles */
+        .cs1 {
+            top: 15%;
+            left: 15%;
+            animation-delay: 0.2s;
+            transform: scale(0.8);
+        }
+
+        .cs1 {
+            top: 10%;
+            left: 10%;
+            animation-delay: 0.2s;
+            transform: scale(0.9);
+        }
+
+        .cs2 {
+            top: 10%;
+            right: 10%;
+            animation-delay: 1.5s;
+            transform: scale(0.6);
+        }
+
+        .cs3 {
+            bottom: 10%;
+            right: 10%;
+            animation-delay: 0.8s;
+            transform: scale(0.8);
+        }
+
+        /* Random positions for cube sparkles - More distributed */
+        .cs1 {
+            top: 20%;
+            left: 20%;
+            animation-delay: 0.2s;
+            transform: scale(0.9);
+        }
+
+        .cs2 {
+            bottom: 25%;
+            right: 25%;
+            animation-delay: 1.5s;
+            transform: scale(0.6);
+        }
+
+        /* --- Face-Specific Sparkles --- */
+
+        /* Front Face */
+        .f1 {
+            top: 20%;
+            left: 20%;
+            animation-delay: 0.2s;
+            transform: scale(0.9);
+        }
+
+        .f2 {
+            bottom: 25%;
+            right: 25%;
+            animation-delay: 1.5s;
+            transform: scale(0.6);
+        }
+
+        .f3 {
+            top: 45%;
+            right: 15%;
+            animation-delay: 0.8s;
+            transform: scale(0.8);
+        }
+
+        .f4 {
+            bottom: 15%;
+            left: 35%;
+            animation-delay: 2.1s;
+            transform: scale(0.5);
+        }
+
+        .f5 {
+            top: 15%;
+            right: 45%;
+            animation-delay: 0.5s;
+            transform: scale(0.7);
+        }
+
+        /* Back Face */
+        .b1 {
+            top: 10%;
+            right: 30%;
+            animation-delay: 1.1s;
+            transform: scale(0.8);
+        }
+
+        .b2 {
+            bottom: 35%;
+            left: 15%;
+            animation-delay: 0.4s;
+            transform: scale(0.5);
+        }
+
+        .b3 {
+            top: 50%;
+            left: 50%;
+            animation-delay: 2.2s;
+            transform: scale(0.9);
+        }
+
+        .b4 {
+            top: 25%;
+            right: 10%;
+            animation-delay: 1.7s;
+            transform: scale(0.6);
+        }
+
+        .b5 {
+            bottom: 10%;
+            right: 40%;
+            animation-delay: 0.9s;
+            transform: scale(0.7);
+        }
+
+        /* Right Face */
+        .r1 {
+            top: 15%;
+            left: 10%;
+            animation-delay: 1.3s;
+            transform: scale(0.6);
+        }
+
+        .r2 {
+            bottom: 20%;
+            right: 15%;
+            animation-delay: 0.6s;
+            transform: scale(0.8);
+        }
+
+        .r3 {
+            top: 40%;
+            right: 40%;
+            animation-delay: 2.4s;
+            transform: scale(0.5);
+        }
+
+        .r4 {
+            bottom: 40%;
+            left: 25%;
+            animation-delay: 1.0s;
+            transform: scale(0.9);
+        }
+
+        .r5 {
+            top: 10%;
+            right: 20%;
+            animation-delay: 0.3s;
+            transform: scale(0.7);
+        }
+
+        /* Left Face */
+        .l1 {
+            top: 30%;
+            left: 40%;
+            animation-delay: 1.9s;
+            transform: scale(0.7);
+        }
+
+        .l2 {
+            bottom: 15%;
+            right: 30%;
+            animation-delay: 0.7s;
+            transform: scale(0.5);
+        }
+
+        .l3 {
+            top: 15%;
+            right: 15%;
+            animation-delay: 2.5s;
+            transform: scale(0.8);
+        }
+
+        .l4 {
+            bottom: 30%;
+            left: 15%;
+            animation-delay: 1.2s;
+            transform: scale(0.6);
+        }
+
+        .l5 {
+            top: 55%;
+            right: 10%;
+            animation-delay: 0.1s;
+            transform: scale(0.9);
+        }
     </style>
 </head>
 
@@ -556,15 +793,35 @@
     <div class="scene idle" id="scene">
         <div class="cube" id="cube">
             <div class="face front">
+                <div class="cube-sparkle f1"></div>
+                <div class="cube-sparkle f2"></div>
+                <div class="cube-sparkle f3"></div>
+                <div class="cube-sparkle f4"></div>
+                <div class="cube-sparkle f5"></div>
                 <div class="question-mark">?</div>
             </div>
             <div class="face back">
+                <div class="cube-sparkle b1"></div>
+                <div class="cube-sparkle b2"></div>
+                <div class="cube-sparkle b3"></div>
+                <div class="cube-sparkle b4"></div>
+                <div class="cube-sparkle b5"></div>
                 <div class="question-mark">?</div>
             </div>
             <div class="face right">
+                <div class="cube-sparkle r1"></div>
+                <div class="cube-sparkle r2"></div>
+                <div class="cube-sparkle r3"></div>
+                <div class="cube-sparkle r4"></div>
+                <div class="cube-sparkle r5"></div>
                 <div class="question-mark">?</div>
             </div>
             <div class="face left">
+                <div class="cube-sparkle l1"></div>
+                <div class="cube-sparkle l2"></div>
+                <div class="cube-sparkle l3"></div>
+                <div class="cube-sparkle l4"></div>
+                <div class="cube-sparkle l5"></div>
                 <div class="question-mark">?</div>
             </div>
             <div class="face top">
@@ -643,6 +900,30 @@
             s.style.setProperty('--dur', (Math.random() * 3 + 2) + 's');
             starContainer.appendChild(s);
         }
+
+        // --- Intro Animation ---
+        function playIntro() {
+            const cube = document.getElementById('cube');
+            // Start from a different angle (e.g. 180 degrees away)
+            cube.style.transition = 'none';
+            cube.style.setProperty('--rot-y', '225deg');
+
+            // Force reflow
+            void cube.offsetWidth;
+
+            // Animate to default (45deg)
+            // Use a nice ease-out for a natural "settle" effect
+            cube.style.transition = 'transform 1.2s cubic-bezier(0.34, 1.56, 0.64, 1)';
+            cube.style.setProperty('--rot-y', '45deg');
+
+            // clean up inline transition after animation to revert to CSS
+            setTimeout(() => {
+                cube.style.transition = '';
+            }, 1200);
+        }
+
+        // Trigger intro after a short delay
+        setTimeout(playIntro, 100);
 
         // --- Основные элементы ---
         const scene = document.getElementById('scene');
@@ -820,6 +1101,5 @@
     </script>
 
 </body>
-
 
 </html>
